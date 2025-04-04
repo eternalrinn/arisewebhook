@@ -1,0 +1,114 @@
+local function sendWebhook()
+
+local HttpService = game:GetService("HttpService")
+local Webhook = getgenv().Webhook
+local discorduserid = ""
+
+-- playerStats
+local player = game:GetService("Players").LocalPlayer
+local playerName = player.Name
+local playerCash = player.PlayerGui.Hud.BottomContainer.Coins.ContentText
+local playerGems = player.PlayerGui.Hud.BottomContainer.Gems.ContentText
+local playerRank = player.leaderstats.Rank.Value or 0
+local petContainer = player.PlayerGui.__Disable.Menus.Pets.Main.Container
+local getPet = nil
+local petList = {"Beru"} -- petFilter
+
+-- findPet
+local function checkPet()
+    for _, pet in ipairs(petContainer:GetChildren()) do
+        for _, choosePet in ipairs(petList) do
+            if string.find(pet.Name, choosePet) then
+                getPet = choosePet
+                break
+            end
+        end
+        if getPet then break end
+    end
+end
+
+petContainer.ChildAdded:Connect(checkPet)
+
+-- getAmount
+function returnAmount(amount)
+    local item = player.leaderstats.Inventory.Items:FindFirstChild(amount) 
+    if item then
+        local attributes = item:GetAttributes()
+        if attributes and attributes.Amount then
+            return attributes.Amount
+        else
+            return 0 
+        end
+    else
+        return 0 
+    end
+end
+
+local playerTicket = returnAmount("Ticket")
+local commonDust = returnAmount("EnchCommon")
+local rareDust = returnAmount("EnchRare")
+local legDust = returnAmount("EnchLegendary")
+
+local function WebhookUpdate()
+    local getid = getgenv().DiscordId or ""
+    discorduserid = getid ~= "" and "<@" .. getid .. ">" or ""
+
+    --Datas
+    local embedFields = {
+        {
+            ["name"] = "Player Stats",
+            ["value"] = "<:ariseCoin:1356612455408730173> " ..
+            playerCash .. "\n<:ariseGems:1356611518636101753> " ..
+            playerGems .. "\n<:ariseRank:1356612757805600788> " ..
+            playerRank .. "\n<:ariseTicket:1356610247338492054> " ..
+            playerTicket .. "\n<:ariseLegDust:1356613726966644880> " ..
+            legDust .. "\n<:ariseRareDust:1356613400171647078> " ..
+            rareDust .. "\n<:ariseCommDust:1356615964275507362> " ..
+            commonDust,
+            
+        }
+    }
+
+    -- Add the pet field if a new pet was found
+    if getPet then
+        table.insert(embedFields, {
+            ["name"] = "**Got New Pet**",
+            ["value"] = "**<:ariseBeru:1356619207130877952> **" .. getPet,
+            ["inline"] = true
+        })
+    end
+
+    -- Send the webhook
+    local response = request({
+        Url = Webhook,
+        Method = "POST",
+        Headers = {
+            ["Content-Type"] = "application/json"
+        },
+        Body = HttpService:JSONEncode({
+            ["content"] = discorduserid,
+            ["embeds"] = {{
+                ["title"] = "Arise CrossOver", 
+                ["description"] = "**Username:** ||" .. playerName .. "||",
+                ["type"] = "rich",
+                ["color"] = tonumber("378bff", 16),
+                ["fields"] = embedFields,
+                ["thumbnail"] = {
+                    ["url"] = "https://media.discordapp.net/attachments/1268028183966519432/1356616669090287717/16782888365.png?ex=67ed373a&is=67ebe5ba&hm=b7b2e6821c19a82e0df918e3b927398e93936e6c332d06cef896d73d6a6e4acd&=&format=webp&quality=lossless" 
+                },
+                ["footer"] = {
+                    ["text"] = "Arise CrossOver | "..os.date("%H:%M:%S"),
+                    ["icon_url"] = "https://media.discordapp.net/attachments/1268028183966519432/1268028224730824776/Jewels.png?ex=66aaeecf&is=66a99d4f&hm=4e9289e29287a8ced35727493e776b413672d1050eb879af6106639fbe468794&=&format=webp&quality=lossless"
+                }
+            }}
+        })
+    })
+end
+    WebhookUpdate()
+end
+
+
+while true do
+    sendWebhook()
+    wait(getgenv().SendEverySeconds)
+end
